@@ -8,8 +8,23 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
+  id        Int                @id @default(autoincrement())
+  email     String             @unique
   password  String
-  createdAt DateTime @default(now())
+  createdAt DateTime           @default(now())
+  targets   MonitoringTarget[] // New relation
+}
+
+model MonitoringTarget {
+  id           Int       @id @default(autoincrement())
+  name         String
+  url          String
+  type         String    // 'website' or 'api'
+  status       String    @default("pending") // 'online', 'offline', 'pending'
+  responseTime Int?      // stored in milliseconds
+  lastChecked  DateTime?
+  createdAt    DateTime  @default(now())
+  
+  userId       Int
+  user         User      @relation(fields: [userId], references: [id])
 }
