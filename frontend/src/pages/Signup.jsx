@@ -5,17 +5,45 @@ export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleSignup = (e) => {
+  const handleSignup = async (e) => {
     e.preventDefault();
+    setError("");
+
     if (password !== confirmPassword) {
-      alert("Passwords don't match!");
-      return;
+      return setError("Passwords don't match!");
     }
-    // TODO: Connect to backend /api/auth/signup later
-    console.log("Signing up...", { email });
-    navigate("/dashboard");
+
+    setLoading(true);
+    try {
+      const response = await fetch("http://localhost:6225/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(
+          data && data.error ? data.error : "Signup failed. Please try again.",
+        );
+      }
+
+      localStorage.setItem("token", data.token);
+      navigate("/dashboard");
+    } catch (err) {
+      if (err.message.includes("Failed to fetch")) {
+        setError("Cannot connect to the server. Is the backend running?");
+      } else {
+        setError(err.message);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -24,6 +52,13 @@ export default function Signup() {
         <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">
           Create an Account
         </h2>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded border border-red-200 text-sm">
+            {error}
+          </div>
+        )}
+
         <form onSubmit={handleSignup} className="space-y-4">
           <input
             type="email"
@@ -51,9 +86,10 @@ export default function Signup() {
           />
           <button
             type="submit"
-            className="w-full bg-green-600 text-white p-3 rounded hover:bg-green-700 font-medium transition"
+            disabled={loading}
+            className="w-full bg-green-600 text-white p-3 rounded hover:bg-green-700 font-medium transition disabled:bg-green-400"
           >
-            Sign Up
+            {loading ? "Creating Account..." : "Sign Up"}
           </button>
         </form>
         <p className="mt-4 text-center text-sm text-gray-600">

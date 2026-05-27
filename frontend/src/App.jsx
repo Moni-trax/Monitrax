@@ -7,19 +7,46 @@ import {
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
-import Containers from "./pages/Containers"; // New
-import Settings from "./pages/Settings"; // New
+import Containers from "./pages/Containers";
+import Settings from "./pages/Settings";
+import ProtectedRoute from "./components/ProtectedRoute"; // Import the wrapper
 
 function App() {
   return (
     <Router>
       <Routes>
+        {/* Public Routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/containers" element={<Containers />} /> {/* New */}
-        <Route path="/settings" element={<Settings />} /> {/* New */}
-        <Route path="*" element={<Navigate to="/login" />} />
+
+        {/* Protected Routes */}
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/containers"
+          element={
+            <ProtectedRoute>
+              <Containers />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <Settings />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/dashboard" />} />
       </Routes>
     </Router>
   );

@@ -36,12 +36,15 @@ export default function Sidebar() {
         </Link>
       </nav>
       <div className="p-4 border-t border-gray-700">
-        <Link
-          to="/login"
-          className="flex items-center space-x-3 p-3 text-red-400 hover:bg-gray-800 rounded transition"
+        <button
+          onClick={() => {
+            localStorage.removeItem("token");
+            window.location.href = "/login";
+          }}
+          className="w-full flex items-center space-x-3 p-3 text-red-400 hover:bg-gray-800 rounded transition"
         >
           <LogOut size={20} /> <span>Logout</span>
-        </Link>
+        </button>
       </div>
     </div>
   );
