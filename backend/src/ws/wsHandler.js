@@ -31,6 +31,15 @@ function init(httpServer, getInitialState = {}) {
       send(ws, "docker", getInitialState.getDocker());
     }
 
+    if (getInitialState.getAnomalies) {
+      send(ws, "anomalies", getInitialState.getAnomalies());
+    }
+
+    if (getInitialState.getLogs) {
+      send(ws, "logs", getInitialState.getLogs());
+    }
+
+
     ws.on("close", () => {
       console.log(`[wsHandler] Client disconnected: ${clientIp}`);
     });

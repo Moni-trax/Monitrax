@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   createMonitor,
   updateMonitor,
@@ -9,15 +9,52 @@ import { timeAgo } from "../utils/format";
 export default function UptimeView({ monitors = [], onRefresh }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMonitor, setEditingMonitor] = useState(null);
-  const [formError, setFormError] = useState("");
+  const [submitError, setSubmitError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     url: "",
     method: "GET",
-    expectedStatus: 200,
-    intervalSec: 30,
-    timeoutMs: 5000,
+    expectedStatus: "200",
+    intervalSec: "30",
+    timeoutSec: "5",
   });
+
+  const errors = useMemo(() => {
+    const errs = {};
+    const trimmedName = formData.name.trim();
+    if (!trimmedName) {
+      errs.name = "Name is required";
+    }
+
+    const trimmedUrl = formData.url.trim();
+    if (!trimmedUrl) {
+      errs.url = "URL is required";
+    } else if (!/^https?:\/\/.+/i.test(trimmedUrl)) {
+      errs.url = "URL must start with http:// or https://";
+    }
+
+    const statusNum = Number(formData.expectedStatus);
+    if (!formData.expectedStatus || isNaN(statusNum) || !Number.isInteger(statusNum) || statusNum < 100 || statusNum > 599) {
+      errs.expectedStatus = "Status must be between 100 and 599";
+    }
+
+    const intervalNum = Number(formData.intervalSec);
+    if (!formData.intervalSec || isNaN(intervalNum) || intervalNum < 5 || intervalNum > 3600) {
+      errs.intervalSec = "Interval must be between 5 and 3600 seconds";
+    }
+
+    const timeoutNum = Number(formData.timeoutSec);
+    if (!formData.timeoutSec || isNaN(timeoutNum) || timeoutNum < 1 || timeoutNum > 60) {
+      errs.timeoutSec = "Timeout must be between 1 and 60 seconds";
+    } else if (!isNaN(intervalNum) && timeoutNum > intervalNum) {
+      errs.timeoutSec = "Timeout cannot exceed the check interval";
+    }
+
+    return errs;
+  }, [formData]);
+
+  const isValid = Object.keys(errors).length === 0;
 
   function openAddModal() {
     setEditingMonitor(null);
@@ -25,42 +62,58 @@ export default function UptimeView({ monitors = [], onRefresh }) {
       name: "",
       url: "",
       method: "GET",
-      expectedStatus: 200,
-      intervalSec: 30,
-      timeoutMs: 5000,
+      expectedStatus: "200",
+      intervalSec: "30",
+      timeoutSec: "5",
     });
-    setFormError("");
+    setSubmitError("");
+    setIsSubmitting(false);
     setIsModalOpen(true);
   }
 
   function openEditModal(monitor) {
     setEditingMonitor(monitor);
     setFormData({
-      name: monitor.name,
-      url: monitor.url,
+      name: monitor.name || "",
+      url: monitor.url || "",
       method: monitor.method || "GET",
-      expectedStatus: monitor.expectedStatus || 200,
-      intervalSec: monitor.intervalSec || 30,
-      timeoutMs: monitor.timeoutMs || 5000,
+      expectedStatus: String(monitor.expectedStatus ?? 200),
+      intervalSec: String(monitor.intervalSec ?? 30),
+      timeoutSec: String(Math.round((monitor.timeoutMs ?? 5000) / 1000)),
     });
-    setFormError("");
+    setSubmitError("");
+    setIsSubmitting(false);
     setIsModalOpen(true);
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setFormError("");
+    if (!isValid || isSubmitting) return;
+
+    setSubmitError("");
+    setIsSubmitting(true);
+
+    const payload = {
+      name: formData.name.trim(),
+      url: formData.url.trim(),
+      method: formData.method,
+      expectedStatus: parseInt(formData.expectedStatus, 10),
+      intervalSec: parseInt(formData.intervalSec, 10),
+      timeoutMs: parseInt(formData.timeoutSec, 10) * 1000,
+    };
 
     try {
       if (editingMonitor) {
-        await updateMonitor(editingMonitor.id, formData);
+        await updateMonitor(editingMonitor.id, payload);
       } else {
-        await createMonitor(formData);
+        await createMonitor(payload);
       }
       setIsModalOpen(false);
       if (onRefresh) onRefresh();
     } catch (err) {
-      setFormError(err.message);
+      setSubmitError(err.message);
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -153,7 +206,6 @@ export default function UptimeView({ monitors = [], onRefresh }) {
                 </div>
               </div>
 
-              {/* Sparkline from recent checks */}
               <div className="sparkline-container">
                 <div className="sparkline-bars">
                   {(m.recentResults || []).map((r, i) => (
@@ -179,41 +231,43 @@ export default function UptimeView({ monitors = [], onRefresh }) {
         </div>
       )}
 
-      {/* Modal Dialog */}
       {isModalOpen && (
         <div className="modal-backdrop">
           <div className="modal-card">
             <h3 className="modal-title">
               {editingMonitor ? "Edit Monitor" : "New Uptime Monitor"}
             </h3>
-            {formError && <div className="form-error">{formError}</div>}
-            <form onSubmit={handleSubmit} className="monitor-form">
+            {submitError && <div className="form-error">{submitError}</div>}
+            <form onSubmit={handleSubmit} className="monitor-form" noValidate>
               <div className="form-group">
-                <label>Monitor Name</label>
+                <label htmlFor="monitor-name">Monitor Name</label>
                 <input
+                  id="monitor-name"
                   type="text"
-                  required
                   placeholder="e.g. Production API"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 />
+                {errors.name && <span className="field-error">{errors.name}</span>}
               </div>
 
               <div className="form-group">
-                <label>URL (HTTP / HTTPS)</label>
+                <label htmlFor="monitor-url">URL (HTTP / HTTPS)</label>
                 <input
+                  id="monitor-url"
                   type="url"
-                  required
                   placeholder="https://example.com/health"
                   value={formData.url}
                   onChange={(e) => setFormData({ ...formData, url: e.target.value })}
                 />
+                {errors.url && <span className="field-error">{errors.url}</span>}
               </div>
 
               <div className="form-row">
                 <div className="form-group">
-                  <label>HTTP Method</label>
+                  <label htmlFor="monitor-method">HTTP Method</label>
                   <select
+                    id="monitor-method"
                     value={formData.method}
                     onChange={(e) => setFormData({ ...formData, method: e.target.value })}
                   >
@@ -223,42 +277,61 @@ export default function UptimeView({ monitors = [], onRefresh }) {
                   </select>
                 </div>
                 <div className="form-group">
-                  <label>Expected Status</label>
+                  <label htmlFor="monitor-status">Expected Status</label>
                   <input
+                    id="monitor-status"
                     type="number"
-                    min="100"
-                    max="599"
+                    inputMode="numeric"
+                    onWheel={(e) => e.target.blur()}
+                    placeholder="200"
                     value={formData.expectedStatus}
                     onChange={(e) =>
-                      setFormData({ ...formData, expectedStatus: parseInt(e.target.value, 10) })
+                      setFormData({ ...formData, expectedStatus: e.target.value })
                     }
                   />
+                  <span className="field-help">Range: 100 - 599</span>
+                  {errors.expectedStatus && (
+                    <span className="field-error">{errors.expectedStatus}</span>
+                  )}
                 </div>
               </div>
 
               <div className="form-row">
                 <div className="form-group">
-                  <label>Interval (seconds, min 5)</label>
+                  <label htmlFor="monitor-interval">Check Interval (seconds)</label>
                   <input
+                    id="monitor-interval"
                     type="number"
-                    min="5"
+                    inputMode="numeric"
+                    onWheel={(e) => e.target.blur()}
+                    placeholder="30"
                     value={formData.intervalSec}
                     onChange={(e) =>
-                      setFormData({ ...formData, intervalSec: parseInt(e.target.value, 10) })
+                      setFormData({ ...formData, intervalSec: e.target.value })
                     }
                   />
+                  <span className="field-help">Range: 5 - 3600 s</span>
+                  {errors.intervalSec && (
+                    <span className="field-error">{errors.intervalSec}</span>
+                  )}
                 </div>
                 <div className="form-group">
-                  <label>Timeout (ms)</label>
+                  <label htmlFor="monitor-timeout">Timeout (seconds)</label>
                   <input
+                    id="monitor-timeout"
                     type="number"
-                    min="100"
-                    step="500"
-                    value={formData.timeoutMs}
+                    inputMode="numeric"
+                    onWheel={(e) => e.target.blur()}
+                    placeholder="5"
+                    value={formData.timeoutSec}
                     onChange={(e) =>
-                      setFormData({ ...formData, timeoutMs: parseInt(e.target.value, 10) })
+                      setFormData({ ...formData, timeoutSec: e.target.value })
                     }
                   />
+                  <span className="field-help">Range: 1 - 60 s (≤ interval)</span>
+                  {errors.timeoutSec && (
+                    <span className="field-error">{errors.timeoutSec}</span>
+                  )}
                 </div>
               </div>
 
@@ -267,11 +340,20 @@ export default function UptimeView({ monitors = [], onRefresh }) {
                   type="button"
                   className="btn btn-secondary"
                   onClick={() => setIsModalOpen(false)}
+                  disabled={isSubmitting}
                 >
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  {editingMonitor ? "Save Changes" : "Create Monitor"}
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={!isValid || isSubmitting}
+                >
+                  {isSubmitting
+                    ? "Saving..."
+                    : editingMonitor
+                    ? "Save Changes"
+                    : "Create Monitor"}
                 </button>
               </div>
             </form>

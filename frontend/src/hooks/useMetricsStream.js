@@ -3,7 +3,11 @@ import {
   fetchMetricsHistory,
   fetchMonitors,
   fetchDockerSnapshot,
+  fetchAnomalies,
+  fetchAnomaliesSummary,
+  fetchLogsSummary,
 } from "../services/api";
+import { normalizeSnapshot } from "../utils/format";
 
 const WS_BASE = import.meta.env.VITE_WS_URL || "ws://localhost:4000/ws";
 const WS_STALE_MS = parseInt(import.meta.env.VITE_WS_STALE_MS, 10) || 7000;
@@ -15,6 +19,8 @@ export function useMetricsStream() {
   const [history, setHistory] = useState([]);
   const [monitors, setMonitors] = useState([]);
   const [docker, setDocker] = useState({ available: false, containers: [] });
+  const [anomalies, setAnomalies] = useState({ summary: { open: 0, critical: 0, warning: 0, total: 0 }, recent: [] });
+  const [logs, setLogs] = useState({ perMinute: [], topPatterns: [], newPatterns: [], totalLogs: 0 });
   const [status, setStatus] = useState("connecting");
   const [lastUpdated, setLastUpdated] = useState(null);
 
@@ -26,30 +32,68 @@ export function useMetricsStream() {
   const lastMessageTimeRef = useRef(0);
   const isUnmountedRef = useRef(false);
 
+  const pendingBufferRef = useRef([]);
+  const isPrefillDoneRef = useRef(false);
+
   useEffect(() => {
     isUnmountedRef.current = false;
+    isPrefillDoneRef.current = false;
+    pendingBufferRef.current = [];
+
+    function mergePoints(existing, incoming) {
+      const map = new Map();
+      for (const p of existing) {
+        if (p?.timestamp) map.set(p.timestamp, p);
+      }
+      for (const p of incoming) {
+        const norm = normalizeSnapshot(p);
+        if (norm?.timestamp) map.set(norm.timestamp, norm);
+      }
+      return Array.from(map.values())
+        .sort((a, b) => a.timestamp - b.timestamp)
+        .slice(-MAX_POINTS);
+    }
 
     async function prefillData() {
       try {
-        const [historyRes, monitorsRes, dockerRes] = await Promise.allSettled([
+        const [historyRes, monitorsRes, dockerRes, anomaliesRes, summaryRes, logsRes] = await Promise.allSettled([
           fetchMetricsHistory(),
           fetchMonitors(),
           fetchDockerSnapshot(),
+          fetchAnomalies("all"),
+          fetchAnomaliesSummary(),
+          fetchLogsSummary(),
         ]);
 
         if (isUnmountedRef.current) return;
 
+        let fetchedSnapshots = [];
         if (historyRes.status === "fulfilled" && Array.isArray(historyRes.value?.snapshots)) {
-          setHistory(historyRes.value.snapshots.slice(-MAX_POINTS));
+          fetchedSnapshots = historyRes.value.snapshots;
         }
+
+        const buffered = pendingBufferRef.current;
+        pendingBufferRef.current = [];
+        isPrefillDoneRef.current = true;
+
+        setHistory((prev) => mergePoints(prev, [...fetchedSnapshots, ...buffered]));
+
         if (monitorsRes.status === "fulfilled" && Array.isArray(monitorsRes.value)) {
           setMonitors(monitorsRes.value);
         }
         if (dockerRes.status === "fulfilled" && dockerRes.value) {
           setDocker(dockerRes.value);
         }
+
+        const recentAnoms = anomaliesRes.status === "fulfilled" && Array.isArray(anomaliesRes.value) ? anomaliesRes.value : [];
+        const sumAnoms = summaryRes.status === "fulfilled" && summaryRes.value ? summaryRes.value : { open: 0, critical: 0, warning: 0, total: 0 };
+        setAnomalies({ summary: sumAnoms, recent: recentAnoms });
+
+        if (logsRes.status === "fulfilled" && logsRes.value) {
+          setLogs(logsRes.value);
+        }
       } catch {
-        // Fall back to WebSocket broadcasts
+        isPrefillDoneRef.current = true;
       }
     }
 
@@ -66,13 +110,21 @@ export function useMetricsStream() {
 
       if (wsRef.current) {
         try {
+          wsRef.current.onclose = null;
+          wsRef.current.onerror = null;
           wsRef.current.close();
         } catch {
           // Ignore
         }
       }
 
-      const ws = new WebSocket(WS_BASE);
+      let ws;
+      try {
+        ws = new WebSocket(WS_BASE);
+      } catch {
+        scheduleReconnect();
+        return;
+      }
       wsRef.current = ws;
 
       ws.onopen = () => {
@@ -97,14 +149,22 @@ export function useMetricsStream() {
         try {
           const msg = JSON.parse(event.data);
           if (msg.type === "metrics" && msg.data) {
-            setHistory((prev) => {
-              const next = [...prev, msg.data];
-              return next.length > MAX_POINTS ? next.slice(-MAX_POINTS) : next;
-            });
+            if (!isPrefillDoneRef.current) {
+              pendingBufferRef.current.push(msg.data);
+            } else {
+              setHistory((prev) => mergePoints(prev, [msg.data]));
+            }
           } else if (msg.type === "monitors" && Array.isArray(msg.data)) {
             setMonitors(msg.data);
           } else if (msg.type === "docker" && msg.data) {
             setDocker(msg.data);
+          } else if (msg.type === "anomalies" && msg.data) {
+            setAnomalies((prev) => ({
+              summary: msg.data.summary || prev.summary,
+              recent: msg.data.recent || prev.recent,
+            }));
+          } else if (msg.type === "logs" && msg.data) {
+            setLogs(msg.data);
           }
         } catch {
           // Ignore malformed payloads
@@ -119,6 +179,7 @@ export function useMetricsStream() {
 
       ws.onerror = () => {
         if (isUnmountedRef.current || connectionSeqRef.current !== seq) return;
+        setStatus("disconnected");
         try {
           ws.close();
         } catch {
@@ -131,7 +192,7 @@ export function useMetricsStream() {
       if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
       const delay = retryDelayRef.current;
       retryTimeoutRef.current = setTimeout(() => {
-        retryDelayRef.current = Math.min(retryDelayRef.current * 2, MAX_RETRY_MS);
+        retryDelayRef.current = Math.min(retryDelayRef.current * 1.5, MAX_RETRY_MS);
         connect();
       }, delay);
     }
@@ -156,13 +217,18 @@ export function useMetricsStream() {
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
 
-    // Watchdog checking for silent drops or suspended tabs
     watchdogIntervalRef.current = setInterval(() => {
       if (isUnmountedRef.current) return;
-      if (lastMessageTimeRef.current > 0 && Date.now() - lastMessageTimeRef.current > WS_STALE_MS) {
+      if (
+        lastMessageTimeRef.current > 0 &&
+        Date.now() - lastMessageTimeRef.current > WS_STALE_MS
+      ) {
         setStatus("disconnected");
+        lastMessageTimeRef.current = 0;
         if (wsRef.current) {
           try {
+            wsRef.current.onclose = null;
+            wsRef.current.onerror = null;
             wsRef.current.close();
           } catch {
             // Ignore
@@ -182,6 +248,8 @@ export function useMetricsStream() {
       if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
       if (wsRef.current) {
         try {
+          wsRef.current.onclose = null;
+          wsRef.current.onerror = null;
           wsRef.current.close();
         } catch {
           // Ignore
@@ -198,6 +266,9 @@ export function useMetricsStream() {
     monitors,
     setMonitors,
     docker,
+    anomalies,
+    setAnomalies,
+    logs,
     status,
     lastUpdated,
   };

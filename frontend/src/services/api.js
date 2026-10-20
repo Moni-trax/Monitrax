@@ -54,3 +54,28 @@ export function deleteMonitor(id) {
 export function fetchDockerSnapshot() {
   return request("/api/docker");
 }
+
+export function fetchAnomalies(status = "all") {
+  return request(`/api/anomalies?status=${status}`);
+}
+
+export function fetchAnomaliesSummary() {
+  return request("/api/anomalies/summary");
+}
+
+export function fetchLogsSummary() {
+  return request("/api/logs/summary");
+}
+
+export function fetchRecentLogs(params = {}) {
+  const q = new URLSearchParams(params).toString();
+  return request(`/api/logs/recent${q ? `?${q}` : ""}`);
+}
+
+export function simulateAnomaly(data) {
+  return request("/api/dev/simulate-anomaly", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+

@@ -8,6 +8,8 @@ import RamChart from "./components/RamChart";
 import DiskList from "./components/DiskList";
 import UptimeView from "./components/UptimeView";
 import DockerView from "./components/DockerView";
+import AnomaliesView from "./components/AnomaliesView";
+import LogsView from "./components/LogsView";
 import { fetchMonitors } from "./services/api";
 import { bytesToGb, formatPercent, getStatusLevel } from "./utils/format";
 
@@ -19,6 +21,8 @@ export default function App() {
     monitors,
     setMonitors,
     docker,
+    anomalies,
+    logs,
     status,
     lastUpdated,
   } = useMetricsStream();
@@ -33,6 +37,7 @@ export default function App() {
   }
 
   const isDisconnected = status === "disconnected";
+  const openAnomaliesCount = anomalies.summary?.open || 0;
 
   if (!latest && monitors.length === 0 && !docker.available) {
     return (
@@ -41,6 +46,7 @@ export default function App() {
           hostname="connecting..."
           status={status}
           lastUpdated={lastUpdated}
+          openAnomalies={openAnomaliesCount}
         />
         <div className="loading-screen">
           <div className="spinner" />
@@ -67,6 +73,7 @@ export default function App() {
         hostname={latest?.hostname}
         status={status}
         lastUpdated={lastUpdated}
+        openAnomalies={openAnomaliesCount}
       />
 
       <div className="nav-tabs">
@@ -87,6 +94,18 @@ export default function App() {
           onClick={() => setActiveTab("docker")}
         >
           Docker ({docker.containers?.length || 0})
+        </button>
+        <button
+          className={`tab-btn ${activeTab === "anomalies" ? "active" : ""}`}
+          onClick={() => setActiveTab("anomalies")}
+        >
+          Anomalies {openAnomaliesCount > 0 && <span className="tab-badge-alert">{openAnomaliesCount}</span>}
+        </button>
+        <button
+          className={`tab-btn ${activeTab === "logs" ? "active" : ""}`}
+          onClick={() => setActiveTab("logs")}
+        >
+          Logs
         </button>
       </div>
 
@@ -129,8 +148,8 @@ export default function App() {
             </div>
 
             <div className="charts-grid">
-              <CpuChart history={history} />
-              <RamChart history={history} latestRam={latest?.ram} />
+              <CpuChart history={history} anomalies={anomalies.recent || []} />
+              <RamChart history={history} latestRam={latest?.ram} anomalies={anomalies.recent || []} />
             </div>
 
             <div className="details-grid">
@@ -148,6 +167,10 @@ export default function App() {
         )}
 
         {activeTab === "docker" && <DockerView docker={docker} />}
+
+        {activeTab === "anomalies" && <AnomaliesView anomalies={anomalies} />}
+
+        {activeTab === "logs" && <LogsView logsSummary={logs} />}
       </main>
     </div>
   );

@@ -1,4 +1,5 @@
 const repo = require("../repositories/monitorRepository");
+const anomalyDetector = require("./anomalyDetector");
 
 const MAX_HISTORY = 100;
 const historyMap = new Map();
@@ -49,9 +50,13 @@ async function executeCheck(monitor) {
 
   recordResult(monitor.id, result);
 
+  // Feed monitor response time into anomaly detector
+  anomalyDetector.checkSeries(`monitor_response_time_${monitor.name || monitor.id}`, responseTimeMs);
+
   if (broadcastFn) {
     broadcastFn("monitors", getAllWithStats());
   }
+
 
   return result;
 }

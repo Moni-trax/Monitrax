@@ -6,17 +6,28 @@ import {
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
+  ReferenceArea,
 } from "recharts";
 
-export default function CpuChart({ history }) {
+export default function CpuChart({ history, anomalies = [] }) {
   const data = history.map((snap) => ({
-    time: new Date(snap.timestamp).toLocaleTimeString([], {
+    timestamp: typeof snap.timestamp === "number" ? snap.timestamp : new Date(snap.timestamp).getTime(),
+    usage: snap.cpu?.usagePercent ?? 0,
+  }));
+
+  function formatTime(ts) {
+    if (!ts) return "";
+    return new Date(ts).toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
-    }),
-    usage: snap.cpu?.usagePercent ?? 0,
-  }));
+    });
+  }
+
+  // Filter anomalies relevant to CPU
+  const cpuAnomalies = anomalies.filter(
+    (a) => a.series === "cpu_usage_percent" || a.series === "system_cpu"
+  );
 
   return (
     <div className="card chart-card">
@@ -29,11 +40,14 @@ export default function CpuChart({ history }) {
           <LineChart data={data}>
             <CartesianGrid stroke="#262c36" strokeDasharray="3 3" vertical={false} />
             <XAxis
-              dataKey="time"
+              dataKey="timestamp"
+              type="number"
+              domain={["dataMin", "dataMax"]}
+              tickFormatter={formatTime}
               stroke="#525d6f"
               fontSize={11}
               tickLine={false}
-              minTickGap={30}
+              minTickGap={35}
             />
             <YAxis
               stroke="#525d6f"
@@ -50,8 +64,27 @@ export default function CpuChart({ history }) {
                 color: "#e6edf3",
                 fontSize: "12px",
               }}
+              labelFormatter={(ts) => formatTime(ts)}
               formatter={(value) => [`${value}%`, "CPU"]}
             />
+
+            {/* Shaded anomaly bands */}
+            {cpuAnomalies.map((a) => {
+              const startX = new Date(a.startedAt).getTime();
+              const endX = a.resolvedAt ? new Date(a.resolvedAt).getTime() : Date.now();
+              return (
+                <ReferenceArea
+                  key={a.id}
+                  x1={startX}
+                  x2={endX}
+                  fill={a.severity === "critical" ? "#f87171" : "#fbbf24"}
+                  fillOpacity={0.25}
+                  stroke={a.severity === "critical" ? "#f87171" : "#fbbf24"}
+                  strokeDasharray="3 3"
+                />
+              );
+            })}
+
             <Line
               type="monotone"
               dataKey="usage"

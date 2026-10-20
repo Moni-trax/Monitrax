@@ -808,9 +808,36 @@ body {
   outline: none;
 }
 
+/* Remove number input spinner arrows */
+.form-group input[type="number"]::-webkit-outer-spin-button,
+.form-group input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.form-group input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 .form-group input:focus,
 .form-group select:focus {
   border-color: var(--color-blue);
+}
+
+.field-help {
+  font-size: 0.72rem;
+  color: var(--text-subtle);
+}
+
+.field-error {
+  font-size: 0.72rem;
+  color: var(--status-critical);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .modal-actions {
@@ -819,6 +846,181 @@ body {
   gap: 10px;
   margin-top: 10px;
 }
+
+/* Tab Alert Badges */
+.tab-badge-alert {
+  background: var(--status-critical);
+  color: #fff;
+  font-size: 0.68rem;
+  padding: 1px 6px;
+  border-radius: 10px;
+  margin-left: 6px;
+  font-weight: 700;
+}
+
+.header-anomaly-badge {
+  font-size: 0.78rem;
+  padding: 4px 10px;
+  border-radius: 14px;
+}
+
+/* Filter Pills */
+.filter-pill-group,
+.log-filters {
+  display: flex;
+  gap: 6px;
+}
+
+.filter-pill {
+  background: var(--bg-card-subtle);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filter-pill:hover,
+.filter-pill.active {
+  color: #fff;
+  background: #242e3f;
+  border-color: var(--color-blue);
+}
+
+/* Anomalies List */
+.anomalies-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.anomaly-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-left: 4px solid var(--border-color);
+}
+
+.border-critical {
+  border-left-color: var(--status-critical);
+}
+
+.border-warning {
+  border-left-color: var(--status-warning);
+}
+
+.anomaly-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.anomaly-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.anomaly-series {
+  font-family: monospace;
+  font-weight: 600;
+  color: #fff;
+  font-size: 0.88rem;
+}
+
+.anomaly-msg {
+  font-size: 0.86rem;
+  color: var(--text-main);
+  line-height: 1.4;
+}
+
+.anomaly-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-color);
+  padding-top: 8px;
+  margin-top: 4px;
+}
+
+.anomaly-stats {
+  display: flex;
+  gap: 12px;
+  font-family: monospace;
+}
+
+.badge-subtle {
+  background: var(--bg-card-subtle);
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+}
+
+/* Log Controls & Feed */
+.log-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.search-input {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  outline: none;
+  width: 260px;
+}
+
+.search-input:focus {
+  border-color: var(--color-blue);
+}
+
+.legend-pills {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 2px;
+}
+
+.dot-error { background: #f87171; }
+.dot-warn { background: #fbbf24; }
+.dot-info { background: #38bdf8; }
+
+.pattern-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pattern-text {
+  font-size: 0.76rem;
+  color: #e2e8f0;
+}
+
+.log-message-text {
+  font-family: monospace;
+  font-size: 0.78rem;
+  color: #cbd5e1;
+  word-break: break-all;
+}
+
+
 
 /* Loading State */
 .loading-screen {

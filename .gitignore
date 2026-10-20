@@ -13,7 +13,9 @@ build/
 # ── Logs ─────────────────────────────────────────────────────
 logs/
 *.log
+sample.log
 npm-debug.log*
+
 
 # ── OS / Editor junk ─────────────────────────────────────────
 .DS_Store

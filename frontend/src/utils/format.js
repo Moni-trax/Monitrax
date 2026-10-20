@@ -31,3 +31,32 @@ export function timeAgo(date) {
   const hours = Math.floor(mins / 60);
   return `${hours}h ago`;
 }
+
+export function normalizeSnapshot(raw) {
+  if (!raw) return null;
+  const ts = typeof raw.timestamp === "number" ? raw.timestamp : new Date(raw.timestamp).getTime();
+  return {
+    timestamp: ts,
+    hostname: raw.hostname || "unknown-host",
+    cpu: {
+      usagePercent: Number(raw.cpu?.usagePercent ?? 0),
+      cores: Number(raw.cpu?.cores ?? 0),
+      perCore: Array.isArray(raw.cpu?.perCore) ? raw.cpu.perCore.map(Number) : [],
+    },
+    ram: {
+      totalBytes: Number(raw.ram?.totalBytes ?? 0),
+      usedBytes: Number(raw.ram?.usedBytes ?? 0),
+      freeBytes: Number(raw.ram?.freeBytes ?? 0),
+      usagePercent: Number(raw.ram?.usagePercent ?? 0),
+    },
+    disk: Array.isArray(raw.disk)
+      ? raw.disk.map((d) => ({
+          mount: d.mount,
+          totalBytes: Number(d.totalBytes ?? 0),
+          usedBytes: Number(d.usedBytes ?? 0),
+          usagePercent: Number(d.usagePercent ?? 0),
+        }))
+      : [],
+  };
+}
+

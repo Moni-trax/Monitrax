@@ -249,6 +249,194 @@
           ]
         }
       ]
+    },
+    {
+      "name": "Anomalies",
+      "item": [
+        {
+          "name": "List Anomalies",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/anomalies?status=all",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "anomalies"],
+              "query": [{ "key": "status", "value": "all" }]
+            },
+            "description": "Returns anomalies list filtered by status: open, resolved, or all."
+          },
+          "response": [
+            {
+              "name": "200 OK — List Anomalies",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "[\n  {\n    \"id\": \"e4f8b9d1-321a-4c91-a12b-34567890abcd\",\n    \"series\": \"cpu_usage_percent\",\n    \"kind\": \"threshold\",\n    \"severity\": \"critical\",\n    \"value\": 94.2,\n    \"baselineMean\": 24.5,\n    \"baselineStd\": 3.1,\n    \"zScore\": 22.48,\n    \"startedAt\": \"2026-10-20T18:00:00.000Z\",\n    \"resolvedAt\": null,\n    \"status\": \"open\",\n    \"message\": \"cpu_usage_percent at 94.2% breached threshold (90%)\"\n  }\n]"
+            }
+          ]
+        },
+        {
+          "name": "Anomalies Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/anomalies/summary",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "anomalies", "summary"]
+            },
+            "description": "Returns counts of open, critical, warning, and total anomalies."
+          },
+          "response": [
+            {
+              "name": "200 OK — Anomalies Summary",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"open\": 1,\n  \"critical\": 1,\n  \"warning\": 0,\n  \"total\": 5\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Logs",
+      "item": [
+        {
+          "name": "Log Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/logs/summary",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "logs", "summary"]
+            },
+            "description": "Returns per-minute log volume, top error patterns, and new patterns."
+          },
+          "response": [
+            {
+              "name": "200 OK — Log Summary",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"perMinute\": [\n    { \"minute\": \"18:00\", \"ERROR\": 0, \"WARN\": 1, \"INFO\": 12, \"DEBUG\": 0 }\n  ],\n  \"topPatterns\": [\n    {\n      \"pattern\": \"FATAL: Connection pool exhausted for tenant <HEX>\",\n      \"count\": 50,\n      \"firstSeen\": \"2026-10-20T18:00:00.000Z\",\n      \"lastSeen\": \"2026-10-20T18:00:05.000Z\",\n      \"sample\": \"FATAL: Connection pool exhausted for tenant 0x8f4c2e\",\n      \"isNew\": true\n    }\n  ],\n  \"newPatterns\": [],\n  \"totalLogs\": 250\n}"
+            }
+          ]
+        },
+        {
+          "name": "Recent Logs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/logs/recent?level=ERROR&limit=100",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "logs", "recent"],
+              "query": [
+                { "key": "level", "value": "ERROR" },
+                { "key": "limit", "value": "100" }
+              ]
+            },
+            "description": "Returns recent parsed log lines with optional filtering."
+          },
+          "response": [
+            {
+              "name": "200 OK — Recent Logs",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "[\n  {\n    \"id\": \"b8a9c2d1-e4f5-4a6b-8c7d-9e0f1a2b3c4d\",\n    \"source\": \"sample.log\",\n    \"level\": \"ERROR\",\n    \"message\": \"Database connection timeout on pool worker #3\",\n    \"raw\": \"[2026-10-20T18:00:00.000Z] [ERROR] Database connection timeout on pool worker #3\",\n    \"timestamp\": \"2026-10-20T18:00:00.000Z\"\n  }\n]"
+            }
+          ]
+        },
+        {
+          "name": "Ingest Logs",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source\": \"billing-service\",\n  \"lines\": [\n    \"[2026-10-20T18:05:00Z] [INFO] Payment received for invoice 1234\",\n    \"[2026-10-20T18:05:01Z] [ERROR] Card gateway timeout on user 5678\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/logs/ingest",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "logs", "ingest"]
+            },
+            "description": "Ingests up to 500 log lines from external sources."
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"message\": \"Logs ingested successfully\",\n  \"count\": 2\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Prometheus",
+      "item": [
+        {
+          "name": "Metrics Scrape",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/metrics",
+              "host": ["{{baseUrl}}"],
+              "path": ["metrics"]
+            },
+            "description": "Prometheus text format endpoint for system, monitor, container, anomaly, and log metrics."
+          },
+          "response": [
+            {
+              "name": "200 OK — Prometheus Text",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "text/plain; version=0.0.4; charset=utf-8" }],
+              "body": "# HELP monitrax_cpu_usage_percent Overall CPU usage percentage\n# TYPE monitrax_cpu_usage_percent gauge\nmonitrax_cpu_usage_percent 14.5\n"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Dev",
+      "item": [
+        {
+          "name": "Simulate Anomaly",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"series\": \"cpu_usage_percent\",\n  \"value\": 95.0,\n  \"count\": 3\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/dev/simulate-anomaly",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "dev", "simulate-anomaly"]
+            },
+            "description": "Dev-only endpoint to simulate sustained anomalous data points."
+          },
+          "response": [
+            {
+              "name": "200 OK — Simulated",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"message\": \"Simulated 3 points for series cpu_usage_percent with value 95\",\n  \"summary\": { \"open\": 1, \"critical\": 1, \"warning\": 0, \"total\": 1 }\n}"
+            }
+          ]
+        }
+      ]
     }
   ]
 }
+

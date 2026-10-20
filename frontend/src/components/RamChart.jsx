@@ -6,20 +6,27 @@ import {
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
+  ReferenceArea,
 } from "recharts";
 import { bytesToGb } from "../utils/format";
 
-export default function RamChart({ history, latestRam }) {
+export default function RamChart({ history, latestRam, anomalies = [] }) {
   const data = history.map((snap) => ({
-    time: new Date(snap.timestamp).toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    }),
+    timestamp: typeof snap.timestamp === "number" ? snap.timestamp : new Date(snap.timestamp).getTime(),
     usage: snap.ram?.usagePercent ?? 0,
+
     used: snap.ram?.usedBytes ?? 0,
     total: snap.ram?.totalBytes ?? 0,
   }));
+
+  function formatTime(ts) {
+    if (!ts) return "";
+    return new Date(ts).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  }
 
   const usedFormatted = bytesToGb(latestRam?.usedBytes);
   const totalFormatted = bytesToGb(latestRam?.totalBytes);
@@ -46,11 +53,14 @@ export default function RamChart({ history, latestRam }) {
             </defs>
             <CartesianGrid stroke="#262c36" strokeDasharray="3 3" vertical={false} />
             <XAxis
-              dataKey="time"
+              dataKey="timestamp"
+              type="number"
+              domain={["dataMin", "dataMax"]}
+              tickFormatter={formatTime}
               stroke="#525d6f"
               fontSize={11}
               tickLine={false}
-              minTickGap={30}
+              minTickGap={35}
             />
             <YAxis
               stroke="#525d6f"
@@ -67,11 +77,31 @@ export default function RamChart({ history, latestRam }) {
                 color: "#e6edf3",
                 fontSize: "12px",
               }}
+              labelFormatter={(ts) => formatTime(ts)}
               formatter={(value, name, item) => [
                 `${value}% (${bytesToGb(item.payload.used)} / ${bytesToGb(item.payload.total)})`,
                 "RAM",
               ]}
             />
+            {/* Shaded anomaly bands */}
+            {anomalies
+              .filter((a) => a.series === "ram_usage_percent" || a.series === "system_ram")
+              .map((a) => {
+                const startX = new Date(a.startedAt).getTime();
+                const endX = a.resolvedAt ? new Date(a.resolvedAt).getTime() : Date.now();
+                return (
+                  <ReferenceArea
+                    key={a.id}
+                    x1={startX}
+                    x2={endX}
+                    fill={a.severity === "critical" ? "#f87171" : "#fbbf24"}
+                    fillOpacity={0.25}
+                    stroke={a.severity === "critical" ? "#f87171" : "#fbbf24"}
+                    strokeDasharray="3 3"
+                  />
+                );
+              })}
+
             <Area
               type="monotone"
               dataKey="usage"
@@ -80,6 +110,7 @@ export default function RamChart({ history, latestRam }) {
               fill="url(#ramGradient)"
               isAnimationActive={false}
             />
+
           </AreaChart>
         </ResponsiveContainer>
       </div>

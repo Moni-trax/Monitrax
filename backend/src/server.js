@@ -8,16 +8,28 @@ const metricsPoller = require("./services/metricsPoller");
 const monitorScheduler = require("./services/monitorScheduler");
 const dockerPoller = require("./services/dockerPoller");
 
+require("./services/logger"); // Intercept backend logs
+const anomalyDetector = require("./services/anomalyDetector");
+const logAnalyzer = require("./services/logAnalyzer");
+
 const server = http.createServer(app);
 
 const { broadcast, broadcastMetrics, close: closeSockets } = wsHandler.init(server, {
   getMonitors: () => monitorScheduler.getAllWithStats(),
   getDocker: () => dockerPoller.getLastSnapshot(),
+  getAnomalies: () => ({
+    summary: anomalyDetector.getSummary(),
+    recent: anomalyDetector.getAnomalies("all").slice(0, 50),
+  }),
+  getLogs: () => logAnalyzer.getSummary(),
 });
 
+anomalyDetector.setBroadcast(broadcast);
 metricsPoller.start(broadcastMetrics);
 monitorScheduler.start(broadcast);
 dockerPoller.start(broadcast);
+logAnalyzer.start(broadcast);
+
 
 server.listen(config.port, () => {
   console.log(`[server] Monitrax backend running on http://localhost:${config.port}`);
@@ -36,7 +48,9 @@ function shutdown(signal) {
   metricsPoller.stop();
   monitorScheduler.stop();
   dockerPoller.stop();
+  logAnalyzer.stop();
   closeSockets();
+
 
   server.close(() => {
     console.log("[server] HTTP server closed.");
