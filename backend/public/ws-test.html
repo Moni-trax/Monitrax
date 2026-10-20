@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Monitrax — WebSocket Test</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+
+      body {
+        font-family: 'Courier New', Courier, monospace;
+        background: #0d1117;
+        color: #c9d1d9;
+        padding: 24px;
+      }
+
+      h1 {
+        color: #58a6ff;
+        margin-bottom: 4px;
+        font-size: 1.4rem;
+        letter-spacing: 0.1em;
+      }
+
+      #status {
+        display: inline-block;
+        margin-bottom: 20px;
+        padding: 3px 10px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: bold;
+        background: #21262d;
+        color: #f85149;
+      }
+      #status.connected { background: #1f6feb33; color: #3fb950; }
+
+      #log {
+        background: #161b22;
+        border: 1px solid #30363d;
+        border-radius: 6px;
+        padding: 16px;
+        height: 80vh;
+        overflow-y: auto;
+        font-size: 0.78rem;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        word-break: break-all;
+      }
+
+      .entry { border-bottom: 1px solid #21262d; padding: 6px 0; }
+      .entry:last-child { border-bottom: none; }
+      .time { color: #8b949e; }
+      .cpu  { color: #79c0ff; }
+      .ram  { color: #a5d6ff; }
+      .disk { color: #56d364; }
+    </style>
+  </head>
+  <body>
+    <h1>MONITRAX / WebSocket Test</h1>
+    <div id="status">● Disconnected</div>
+    <div id="log">Connecting to ws://localhost:4000/ws …</div>
+
+    <script>
+      const statusEl = document.getElementById('status');
+      const logEl    = document.getElementById('log');
+      let messageCount = 0;
+      let firstMessage = true;
+
+      const ws = new WebSocket('ws://localhost:4000/ws');
+
+      ws.onopen = () => {
+        statusEl.textContent = '● Connected';
+        statusEl.classList.add('connected');
+        log('Connection established.');
+      };
+
+      ws.onmessage = (event) => {
+        if (firstMessage) { logEl.textContent = ''; firstMessage = false; }
+
+        const msg = JSON.parse(event.data);
+        if (msg.type !== 'metrics') return;
+
+        const d = msg.data;
+        messageCount++;
+
+        const entry = document.createElement('div');
+        entry.className = 'entry';
+        entry.innerHTML =
+          `<span class="time">[${new Date(d.timestamp).toLocaleTimeString()}] #${messageCount} — ${d.hostname}</span>\n` +
+          `<span class="cpu">  CPU: ${d.cpu.usagePercent}% overall | ${d.cpu.cores} cores | per-core: [${d.cpu.perCore.join('%, ')}%]</span>\n` +
+          `<span class="ram">  RAM: ${fmt(d.ram.usedBytes)} / ${fmt(d.ram.totalBytes)} (${d.ram.usagePercent}%)</span>\n` +
+          d.disk.map(disk =>
+            `<span class="disk">  DISK ${disk.mount}: ${fmt(disk.usedBytes)} / ${fmt(disk.totalBytes)} (${disk.usagePercent}%)</span>`
+          ).join('\n');
+
+        logEl.insertBefore(entry, logEl.firstChild);
+      };
+
+      ws.onerror = (err) => {
+        log('ERROR — check the backend is running on port 4000.');
+      };
+
+      ws.onclose = () => {
+        statusEl.textContent = '● Disconnected';
+        statusEl.classList.remove('connected');
+        log('Connection closed.');
+      };
+
+      function fmt(bytes) {
+        if (bytes >= 1e9) return (bytes / 1e9).toFixed(1) + ' GB';
+        if (bytes >= 1e6) return (bytes / 1e6).toFixed(1) + ' MB';
+        if (bytes >= 1e3) return (bytes / 1e3).toFixed(1) + ' KB';
+        return bytes + ' B';
+      }
+
+      function log(text) {
+        const entry = document.createElement('div');
+        entry.className = 'entry';
+        entry.textContent = `[${new Date().toLocaleTimeString()}] ${text}`;
+        logEl.insertBefore(entry, logEl.firstChild);
+      }
+    </script>
+  </body>
+</html>

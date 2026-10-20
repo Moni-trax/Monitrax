@@ -1,0 +1,254 @@
+{
+  "info": {
+    "name": "Monitrax API",
+    "_postman_id": "monitrax-collection-v2",
+    "description": "Monitrax backend API — health check, system metrics, uptime/API monitors, and Docker endpoints.\n\nSet the `baseUrl` collection variable to change the target server (default: http://localhost:4000).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4000",
+      "type": "string",
+      "description": "Base URL of the Monitrax backend server"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Returns { status: 'ok', uptime: <seconds> }."
+          },
+          "response": [
+            {
+              "name": "200 OK — Server running",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"status\": \"ok\",\n  \"uptime\": 42.35\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Metrics",
+      "item": [
+        {
+          "name": "Current Metrics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/metrics",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "metrics"]
+            },
+            "description": "Returns a fresh metrics snapshot collected at request time."
+          },
+          "response": [
+            {
+              "name": "200 OK — Current snapshot",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"timestamp\": \"2026-10-03T08:55:00.000Z\",\n  \"hostname\": \"my-machine\",\n  \"cpu\": {\n    \"usagePercent\": 12.45,\n    \"cores\": 8,\n    \"perCore\": [10.2, 14.7]\n  },\n  \"ram\": {\n    \"totalBytes\": 17179869184,\n    \"usedBytes\": 8589934592,\n    \"freeBytes\": 8589934592,\n    \"usagePercent\": 50.0\n  },\n  \"disk\": [\n    {\n      \"mount\": \"/\",\n      \"totalBytes\": 499963174912,\n      \"usedBytes\": 249981587456,\n      \"usagePercent\": 50.0\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Metrics History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/metrics/history",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "metrics", "history"]
+            },
+            "description": "Returns the last N snapshots from the in-memory ring buffer."
+          },
+          "response": [
+            {
+              "name": "200 OK — History",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"count\": 1,\n  \"snapshots\": []\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Monitors",
+      "item": [
+        {
+          "name": "List Monitors",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/monitors",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "monitors"]
+            },
+            "description": "Returns all configured monitors with computed status, uptime %, and latency stats."
+          },
+          "response": [
+            {
+              "name": "200 OK — List monitors",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "[\n  {\n    \"id\": \"c6bfb9d4-6f4e-4b2a-a92c-5b23d90f2345\",\n    \"name\": \"Google Healthcheck\",\n    \"url\": \"https://www.google.com\",\n    \"method\": \"GET\",\n    \"expectedStatus\": 200,\n    \"intervalSec\": 30,\n    \"timeoutMs\": 5000,\n    \"headers\": {},\n    \"body\": null,\n    \"state\": \"up\",\n    \"uptimePercent\": 100,\n    \"avgResponseTimeMs\": 64,\n    \"lastResponseTimeMs\": 58,\n    \"lastChecked\": \"2026-10-20T10:45:00.000Z\",\n    \"lastError\": null,\n    \"recentResults\": []\n  }\n]"
+            }
+          ]
+        },
+        {
+          "name": "Create Monitor",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Production API Health\",\n  \"url\": \"https://httpbin.org/status/200\",\n  \"method\": \"GET\",\n  \"expectedStatus\": 200,\n  \"intervalSec\": 30,\n  \"timeoutMs\": 5000,\n  \"headers\": {},\n  \"body\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/monitors",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "monitors"]
+            },
+            "description": "Creates a new HTTP/HTTPS monitor and starts scheduler."
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": \"c6bfb9d4-6f4e-4b2a-a92c-5b23d90f2345\",\n  \"name\": \"Production API Health\",\n  \"url\": \"https://httpbin.org/status/200\",\n  \"method\": \"GET\",\n  \"expectedStatus\": 200,\n  \"intervalSec\": 30,\n  \"timeoutMs\": 5000,\n  \"headers\": {},\n  \"body\": null,\n  \"createdAt\": \"2026-10-20T10:45:00.000Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Monitor",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Production API Health Updated\",\n  \"intervalSec\": 15\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/monitors/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "monitors", ":id"],
+              "variable": [{ "key": "id", "value": "c6bfb9d4-6f4e-4b2a-a92c-5b23d90f2345" }]
+            },
+            "description": "Updates monitor properties and reschedules the interval."
+          },
+          "response": [
+            {
+              "name": "200 OK — Updated",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": \"c6bfb9d4-6f4e-4b2a-a92c-5b23d90f2345\",\n  \"name\": \"Production API Health Updated\",\n  \"url\": \"https://httpbin.org/status/200\",\n  \"method\": \"GET\",\n  \"expectedStatus\": 200,\n  \"intervalSec\": 15,\n  \"timeoutMs\": 5000\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete Monitor",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/monitors/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "monitors", ":id"],
+              "variable": [{ "key": "id", "value": "c6bfb9d4-6f4e-4b2a-a92c-5b23d90f2345" }]
+            },
+            "description": "Stops scheduler and removes monitor."
+          },
+          "response": [
+            {
+              "name": "200 OK — Deleted",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"message\": \"Monitor deleted successfully\",\n  \"id\": \"c6bfb9d4-6f4e-4b2a-a92c-5b23d90f2345\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Monitor History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/monitors/:id/history",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "monitors", ":id", "history"],
+              "variable": [{ "key": "id", "value": "c6bfb9d4-6f4e-4b2a-a92c-5b23d90f2345" }]
+            },
+            "description": "Returns the last 100 check executions for the monitor."
+          },
+          "response": [
+            {
+              "name": "200 OK — History",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"monitorId\": \"c6bfb9d4-6f4e-4b2a-a92c-5b23d90f2345\",\n  \"count\": 2,\n  \"results\": [\n    {\n      \"ts\": \"2026-10-20T10:45:00.000Z\",\n      \"ok\": true,\n      \"statusCode\": 200,\n      \"responseTimeMs\": 45,\n      \"error\": null\n    }\n  ]\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Docker",
+      "item": [
+        {
+          "name": "Docker Snapshot",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/docker",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "docker"]
+            },
+            "description": "Returns current container statuses and resource stats or available: false."
+          },
+          "response": [
+            {
+              "name": "200 OK — Docker running",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"available\": true,\n  \"containers\": [\n    {\n      \"id\": \"a1b2c3d4e5f6\",\n      \"name\": \"monitrax-redis\",\n      \"image\": \"redis:7-alpine\",\n      \"state\": \"running\",\n      \"status\": \"Up 2 hours\",\n      \"startedAt\": \"2026-10-20T08:00:00.000Z\",\n      \"cpuPercent\": 0.12,\n      \"memUsageBytes\": 14680064,\n      \"memLimitBytes\": 8388608000,\n      \"memPercent\": 0.18,\n      \"netRxBytes\": 1024,\n      \"netTxBytes\": 2048\n    }\n  ],\n  \"timestamp\": \"2026-10-20T10:45:00.000Z\"\n}"
+            },
+            {
+              "name": "200 OK — Docker unavailable",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"available\": false,\n  \"containers\": []\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

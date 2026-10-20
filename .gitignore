@@ -1,0 +1,27 @@
+# ── Dependencies ─────────────────────────────────────────────
+node_modules/
+
+# ── Environment variables (never commit real secrets) ─────────
+.env
+.env.local
+.env.*.local
+
+# ── Build outputs ─────────────────────────────────────────────
+dist/
+build/
+
+# ── Logs ─────────────────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+
+# ── OS / Editor junk ─────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# ── Data directory (local persistence) ────────────────────────
+backend/data/
+data/
+

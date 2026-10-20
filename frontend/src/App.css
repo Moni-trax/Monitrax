@@ -1,0 +1,38 @@
+.landing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-height: 100vh;
+  text-align: center;
+  padding: 24px;
+}
+
+.landing__logo {
+  font-size: clamp(2.5rem, 8vw, 5rem);
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  background: linear-gradient(135deg, #58a6ff 0%, #a5d6ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.landing__tagline {
+  color: #8b949e;
+  font-size: 1rem;
+  letter-spacing: 0.05em;
+}
+
+.landing__badge {
+  margin-top: 8px;
+  display: inline-block;
+  padding: 4px 14px;
+  border: 1px solid #30363d;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  color: #58a6ff;
+  background: #1f6feb1a;
+  letter-spacing: 0.08em;
+}
